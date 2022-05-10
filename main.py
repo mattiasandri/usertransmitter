@@ -2,7 +2,8 @@ import json
 import math
 from bitarray import bitarray
 from bitarray.util import int2ba
-import ASCII_7
+import createMessage
+
 
 
 f = open('settings.ini')
@@ -14,5 +15,4 @@ for i in settings:
  
 f.close() 
 
-
-print(ASCII_7.stringToASCII7("trythis"))
+print(createMessage.createMessage('messagetobecodedinbinary',settings['SyncPattern'],settings['SVID']))
