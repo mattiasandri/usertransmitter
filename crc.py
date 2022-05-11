@@ -1,25 +1,32 @@
-from numpy.polynomial import Polynomial
 from bitarray import bitarray
-from numpy.polynomial.polynomial import *
 import numpy
-
+from binPolynomial import *
 #documentation is at page 53
 
-informationBA=bitarray(34)
+def ComputeCRC(informationBA):
+	PX=(1,0,0,1,0,1,0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,0,0,1)
+	Xplus1=(1,1)
+	
+	GX=BinPolyMul(PX,Xplus1)
+	
+	informationList=[]
+	for i in range(len(informationBA)):
+		informationList.append(informationBA.pop())
+	
+	mX = tuple(informationList)
+	
+	X24=(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1)
+	mX24=BinPolyMul(mX,X24)
+	
+	[Q,R]=BinPolyDiv(mX24,GX)
 
-infLen=len(informationBA)
-PX = Polynomial([1,0,0,1,0,1,0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,0,0,1])
-Xplus1 = Polynomial([1,1])
-GX = Xplus1*PX
+	R=list(R)
 
-informationList=[]
-for i in range(infLen):
-	informationList.append(informationBA.pop())
+	while(len(R)<24):
+		R.insert(0,0)
 
-mX = Polynomial(informationList)
+	R=tuple(R)
+	
+	return R
 
-X24 = Polynomial([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1])
-mX24 = mX*X24
-[Q,R]=polydiv(mX24.coef,GX.coef)
 
-print(R)
