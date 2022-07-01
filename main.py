@@ -25,8 +25,7 @@ for row in csv_file:
 
 for i in range(len(N_ACK)-1):
     if(N_ACK[i+1][1]=='1'):
-        msg=createMessage.createMessageACK(settings['SyncPattern'],settings['SVID'],int(N_ACK[i+1][0]))
+        msg=createMessage.createMessageACK(settings['SYNCpattern'],settings['SV_PRN_ID'],int(N_ACK[i+1][0]))
     if(N_ACK[i+1][1]=='0'):
-        msg=createMessage.createMessageNACK(settings['SyncPattern'],settings['SVID'],int(N_ACK[i+1][0]))
+        msg=createMessage.createMessageNACK(settings['SYNCpattern'],settings['SV_PRN_ID'],int(N_ACK[i+1][0]))
     print(msg)
-
