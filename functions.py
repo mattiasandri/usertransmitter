@@ -9,6 +9,7 @@ import csv
 from bitarray import bitarray
 from scipy import optimize
 
+
 #receives a bitarray containing the information bits, in our case only
 #the ACK or NACK strings
 #returns a tuple containng the CRC calculated
@@ -51,7 +52,7 @@ def GetDopplerShift(originalDopplerSamples, originalSamplingPeriod, startingTime
 
     SampleTime = (np.asarray(range(0,len(originalDopplerSamples))))*originalSamplingPeriod #create the x vector (original)
     InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
-    InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime])
+    InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
 
     popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3, 0.00001], full_output=False)
 
@@ -334,3 +335,86 @@ def awgn(s, noise_power_dB, flag):
         #(10**noise_power_dB/10). That is why we put the multiplication factor there.
         s = s + noise
     return s
+
+#################################################
+# This last part contains functions to sum,     #
+# multiply and divide binary vectors.           #
+#################################################
+def optiSizeVec(vec):
+	optiVec=[]
+	if len(vec)==0:
+		return optiVec
+	if len(vec)==1:
+		if vec[0]==1:
+			return vec
+		else:
+			return optiVec
+	for i in range(1,len(vec)+1):
+		if vec[-i]==0:
+			continue
+		else:
+			for j in range(-len(vec),-i+1):
+				optiVec.append(vec[j])
+			break;
+	return optiVec
+
+def BinPolySum(b1,b2):
+	result=[]
+	shortest=None
+	longest=None
+	if (len(b1)==len(b2)):
+		for i in range(0,len(b1)):
+			result.append((int(b1[i])+int(b2[i]))%2)
+		result=optiSizeVec(result)
+		return result
+	elif (len(b1)>len(b2)):
+		shortest=b2
+		longest=b1
+	else:
+		shortest=b1
+		longest=b2
+	for i in range(0,len(shortest)):
+		result.append((b1[i]+b2[i])%2)
+	for j in range(len(shortest),len(longest)):
+		result.append(longest[j])
+	result=optiSizeVec(result)
+	return result
+
+def BinPolyMul(b1,b2):
+	result=[]
+	for i in range(0,len(b1)+len(b2)-1):
+		result.append(0)
+	for i in range(0,len(b1)):
+		if b1[i]==0:
+			continue;
+		for j in range(0,len(b2)):
+			if b2[j]==0:
+				continue
+			sumDegree=i+j
+			result[sumDegree]=1
+	result=optiSizeVec(result)
+	return result
+
+def BinPolyDiv(b1,b2):
+	quotient=[]
+	for i in range(0,len(b1)):
+		quotient.append(0)
+	remainder=b1
+	while (len(remainder)>=len(b2)):
+		# print 'Iteration'
+		dividendDegree=len(remainder)-1
+		dividerDegree=len(b2)-1
+		degreeDelta=dividendDegree-dividerDegree
+		quotient[degreeDelta]=1
+		subQuotient=[]
+		for i in range(0,degreeDelta+1):
+			if i==degreeDelta:
+				subQuotient.append(1)
+			else:
+				subQuotient.append(0)
+		summer=BinPolyMul(b2,subQuotient)
+		remainder=BinPolySum(remainder,summer)
+		remainder=optiSizeVec(remainder)
+	quotient=optiSizeVec(quotient)
+	remainder=optiSizeVec(remainder)
+	return (quotient,remainder)
