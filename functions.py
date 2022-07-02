@@ -7,7 +7,11 @@ import csv
 from bitarray import bitarray
 from scipy import optimize
 
-#documentation is at page 53
+#receives a bitarray containing the information bits, in our case only
+#the ACK or NACK strings
+#returns a tuple containng the CRC calculated
+#this function will be user by the createdMessage*** functions
+#details are at page 53
 def ComputeCRC(informationBA):
 	PX=(1,0,0,1,0,1,0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,0,0,1)
 	Xplus1=(1,1)
