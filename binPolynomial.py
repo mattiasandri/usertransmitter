@@ -1,3 +1,10 @@
+#################################################
+# This file contains functions to sum, multiply #
+# and divide binary vectors. This has been kept #
+# separated from the functions.py file to be    #
+# more organized.                               #
+#################################################
+
 def optiSizeVec(vec):
 	optiVec=[]
 	if len(vec)==0:
@@ -71,15 +78,8 @@ def BinPolyDiv(b1,b2):
 			else:
 				subQuotient.append(0)
 		summer=BinPolyMul(b2,subQuotient)
-		# print 'quotient = '+str(quotient)
-		# print 'subQuotient = '+str(subQuotient)
-		# print 'summer = '+str(summer)
-		# print 'before sum remainder = '+str(remainder)
 		remainder=BinPolySum(remainder,summer)
-		# print 'before optiSizeVec remainder = '+str(remainder)
 		remainder=optiSizeVec(remainder)
-		# print 'remainder = '+str(remainder)
 	quotient=optiSizeVec(quotient)
 	remainder=optiSizeVec(remainder)
 	return (quotient,remainder)
-
