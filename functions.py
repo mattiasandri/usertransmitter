@@ -122,7 +122,7 @@ def createMessageACK(syncPattern, SVID, msgID):
 
     for i in range(len(msg)):
         arr_msg[i] = int(msg.pop())
-    arr_msg=arr_msg.astype(np.uint8)
+    arr_msg=arr_msg.astype(np.int8)
     arr_msg=np.flip(arr_msg)
 
     return arr_msg
@@ -153,7 +153,7 @@ def createMessageNACK(syncPattern, SVID, msgID):
 
     for i in range(len(msg)):
         arr_msg[i] = msg.pop()
-    arr_msg=arr_msg.astype(np.uint8)
+    arr_msg=arr_msg.astype(np.int8)
     arr_msg=np.flip(arr_msg)
 
     return arr_msg
