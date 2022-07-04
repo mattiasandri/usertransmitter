@@ -439,17 +439,17 @@ def quantizationBounds(array,nbits,lower_bound=None,upper_bound=None):
     return q_array
 
 def quantizationFloat(array, nbits):
-    match nbits:
-        case 16:
-            q_array=array.astype(np.float16)
-        case 32:
-            q_array=array.astype(np.float32)
-        case 64:
-            q_array=array.astype(np.float64)
-        case 128:
-            q_array=array.astype(np.float128)
-        case _:
-            raise ValueError('nbits must be 16, 32, 64 or 128')
+    if(nbits==16):
+        q_array=array.astype(np.float16)
+    elif(nbits==32):
+        q_array=array.astype(np.float32)
+    elif(nbits==64):
+        q_array=array.astype(np.float64)
+    elif(nbits==128):
+        q_array=array.astype(np.float128)
+    else:
+        raise ValueError('nbits must be 16, 32, 64 or 128')
+            
     return q_array
 
 #Function to write I and Q samples already quantized into uint16 into a binary file.
