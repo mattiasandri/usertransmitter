@@ -45,6 +45,9 @@ def ComputeCRC(informationBA):
 def cosf(x, A, nu):
     return A * np.cos(nu * x) # sine function with amplitude A and angular frequency
 
+def linf(x, a, b):
+    return np.asarray((a*x)+b) # sine function with amplitude A and angular frequency
+
 #parameters: original Doppler samples, original sampling period, starting point in seconds of the interpolated samples
 # to be returned, number of interpolated samples needed, interpolated sampling period
 #returns: interpolated doppler shifts
@@ -57,6 +60,19 @@ def GetDopplerShift(originalDopplerSamples, originalSamplingPeriod, startingTime
     popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3, 0.00001], full_output=False)
 
     return cosf(InterpSampleTime, popt[0], popt[1])
+
+#parameters: original FSPL samples, original sampling period, starting point in seconds of the interpolated samples
+# to be returned, number of interpolated samples needed, interpolated sampling period
+#returns: interpolated FSPL
+def GetFSPL(originalFSPL, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod):
+
+    SampleTime = (np.asarray(range(0,len(originalFSPL))))*originalSamplingPeriod #create the x vector (original)
+    InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
+    InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
+
+    popt, pcov = optimize.curve_fit(linf, SampleTime, originalFSPL, p0=[-0.5, 5.60238e+09], full_output=False)
+
+    return linf(InterpSampleTime, popt[0], popt[1])
 
 
 #Function to append a string containing bits into a bitarray type ba
