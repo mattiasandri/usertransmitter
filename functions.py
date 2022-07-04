@@ -145,9 +145,7 @@ def conversion(prn):
     return np.array(new_prn, int)   # the prns are stored in a numpy array of integers
 
 #this function plots the original PRNs
-def plot_prn_zeros(N, prn):
-    
-    Rc = 1.023e06   # chip rate
+def plot_prn_zeros(N, prn, Rc):
     Tc = 1 / Rc     # chip period 
     
     t = np.arange(0, N*Tc, Tc)
@@ -171,8 +169,7 @@ def plot_prn_zeros(N, prn):
         ax.text(i, 1.07, j, fontsize=14) 
 
 
-def plot_prn_modified(N, prn):
-    Rc = 1.023e06   # chip rate
+def plot_prn_modified(N, prn, Rc):
     Tc = 1 / Rc     # chip period 
     
     t = np.arange(0, N*Tc, Tc)
@@ -195,16 +192,15 @@ def plot_prn_modified(N, prn):
     for i,j in zip(centers, prn[0:N]):
         ax.text(i, 1.07, j, fontsize=14)
 
-#Input: the data message (80 bits), the subcarrier (654720 samples) and the index of the PRN (4092 chips) to use,
-#       that goes from 1 to 50 (while the prn index goes from 0 to 49) and a flag, to visualize it or not
+#Input: the data message (80 bits), the subcarrier (654720 samples), the index of the PRN (4092 chips) to use,the array that 
+#       stores the prns, to visualize it or not
 #Output: the modulated signal
-def boc(message, subcarrier, SV_index, flag):
-    
+def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can also be created inside the function but less efficient
     m = message #we use the variable m to avoid any modification of the original message
     
     #useful parameters
-    Rb = 250   #The bit rate for GAL E1 is 250 symbols per second (equivalently, bits per second)
     Tb = 1 / Rb
+    Tc = 1 / Rc
     
     #first we convert the data message from bits to symbols
     for i in range(len(m)):
@@ -214,7 +210,7 @@ def boc(message, subcarrier, SV_index, flag):
             m[i] = -1
     
     #we select the correct prn (based on the SV we have to communicate to)
-    prn = e1bmodifiedcopy['Modified'][SV_index-1]
+    prn = array[SV_index-1]
     
     #first the spreaded sequence is generated
     spreaded = np.zeros(327360)
@@ -323,6 +319,66 @@ def boc(message, subcarrier, SV_index, flag):
         plt.show()
     return modulated
 
+
+#function that samples a signal with a certain sampling frequency Fs
+def sampling(signal, Fs):
+    #As already said, each symbol of the modulated signal has a duration of Tc / 2. Therefore if we use Ts = Tc / 4 we
+    #just need to repeat each symbol two times. This can be easily done with the function np.repeat()
+
+    Ts = 1 / Fs      #sampling period, equal to Tc/4
+
+    final_length = 1309440
+
+    #creation of the sampled signal
+    sampled_signal = np.repeat(signal, 2)
+    print("Before sampling:", signal[0:9])
+    print("After sampling", sampled_signal[0:18])
+    print("Length after sampling:", len(sampled_signal))
+
+    #creation of the time vector
+    t_sampled = np.arange(0, final_length * Ts, Ts)   #1309440 values spaced apart by Tc / 4 seconds each
+    print("\nTime vector:", t_sampled)
+    print("Time vector length:", len(t_sampled))
+
+    return (sampled_signal, t_sampled)
+
+
+#COMPUTATION OF THE POWER OF THE SIGNAL
+#The power of the signal after the modulation is unitary, because each sample is either 1 or -1
+#This function increases the amplitude of a given signal multiplying it by the square root of the power to set
+def hpa(signal, time_vector, power_to_set):
+    power = np.sum(signal**2)/len(signal)
+    print("Power before amplification: ", power)
+    
+    #to set a different power P we just need to multiply the signal by the sqrt(P)
+    amplified_signal = np.sqrt(power_to_set)*signal
+    new_power = np.mean(amplified_signal**2)   #equivalent way to compute the power of a signal
+    print("Power after amplification: ", new_power)
+    
+    #plot of the signal (first N samples)
+    N = 20
+    xticks = time_vector[0:N-1]
+    yticks = [-np.sqrt(power_to_set), 0, np.sqrt(power_to_set)]
+    fig = plt.figure(figsize=(15,5))
+    ax = fig.add_subplot(1,1,1)
+    ax.step(time_vector[0:N], amplified_signal[0:N], where='post', lw=3)
+    ax.set_xticks(xticks)
+    ax.set_yticks(yticks)
+    ax.set_title('Amplified signal', fontsize=15)
+    ax.set_xlabel('Time [s]', fontsize=15)
+    ax.set_ylabel('Amplitude', fontsize=15)
+    ax.grid()
+    
+    return amplified_signal
+
+#simple function to convert from linear to dB
+def lin2dB(x):
+    return 10*np.log10(x)
+
+#simple function to convert from dB to linear
+def dB2lin(x):
+    return 10**(x/10)
+
 #This function simulates the additive white gaussian noise channel. It takes as input the signal without the noise,
 #the power of the noise in dB and a flag that allows the generation of the noise only if it is true.
 def awgn(s, noise_power_dB, flag):
@@ -335,6 +391,31 @@ def awgn(s, noise_power_dB, flag):
         #(10**noise_power_dB/10). That is why we put the multiplication factor there.
         s = s + noise
     return s
+
+#This function does the uniform quantization with n bits of an array, dividing the interval between lower_bound and upper_bound
+#in 2^(n_bits) values, equally spaced. Therefore, each value inside the array will be approximated by the closest value of the 
+#interval
+def quantization(array, upper_bound, lower_bound, n_bits, flag):
+    n_levels = 2**n_bits
+    step = (upper_bound - lower_bound)/n_levels
+    
+    #creating the set of values for the quantization
+    values_set = np.zeros(n_levels)
+    values_set[0] = lower_bound
+    for i in range(1, n_levels):
+        values_set[i] = values_set[i-1]+step
+    
+    if(flag==True):
+        print(values_set)
+        
+    #quantizing the noisy I/Q samples
+    quantized = np.zeros(len(array))
+    for i in range(len(array)):
+        #find the index that provides the minimum difference between the sample and the elements inside the set
+        index = (np.abs(values_set - array[i])).argmin() 
+        quantized[i] = values_set[index]
+        
+    return quantized
 
 #################################################
 # This last part contains functions to sum,     #
