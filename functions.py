@@ -118,7 +118,13 @@ def createMessageACK(syncPattern, SVID, msgID):
     appendOnBA(msg,CRC)
     appendOnBA(msg,'000000')
 
-    return msg
+    arr_msg = np.zeros(len(msg))
+
+    for i in range(len(msg)):
+        arr_msg[i] = int(msg.pop())
+    arr_msg=arr_msg.astype(int)
+
+    return arr_msg
 
 #This function will create a message of NACK
 #Receives the syncPattern, SVID as str and msgID as int
@@ -142,7 +148,13 @@ def createMessageNACK(syncPattern, SVID, msgID):
     appendOnBA(msg,CRC)
     appendOnBA(msg,'000000')
 
-    return msg
+    arr_msg = np.zeros(len(msg))
+
+    for i in range(len(msg)):
+        arr_msg[i] = msg.pop()
+    arr_msg=arr_msg.astype(int)
+
+    return arr_msg
 
 # simple conversion from hexadecimal to binary
 def hex2bin(h):
