@@ -8,6 +8,7 @@ import csv
 from bitarray import bitarray
 from scipy import optimize
 
+#THIS FILE CONTAINS THE LIST OF ALL THE FUNCTIONS USED FOR THE PROJECT
 
 #receives a bitarray containing the information bits, in our case only
 #the ACK or NACK strings
@@ -207,10 +208,10 @@ def plot_prn_modified(N, prn, Rc):
     for i,j in zip(centers, prn[0:N]):
         ax.text(i, 1.07, j, fontsize=14)
 
-#Input: the data message (80 bits), the subcarrier (654720 samples), the index of the PRN (4092 chips) to use,the array that 
-#       stores the prns, to visualize it or not
+#Input: the data message (80 bits), the subcarrier (654720 samples), the index of the PRN (4092 chips) to use, the array that 
+#       stores the prns and a flag (to visualize it or not)
 #Output: the modulated signal
-def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can also be created inside the function but less efficient
+def boc(message, subcarrier, Rb, Rc, SV_index, array, flag,):   #subcarrier can also be created inside the function but less efficient
     m = np.copy(message) #we use the variable m to avoid any modification of the original message
     
     #useful parameters
@@ -337,8 +338,9 @@ def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can a
     return modulated
 
 
-#function that samples a signal with a certain sampling frequency Fs
-def sampling(signal, Fs, symbol_duration):
+#Function that samples a signal with a certain sampling frequency Fs. The number of the packet is the "index" variable
+#If flag is true, it also prints the modulated signals, the original signals and the corresponding time vectors
+def sampling(signal, Fs, symbol_duration, total_time_vector, index, flag):
     #As already said, each symbol of the modulated signal has a duration of Tc / 2. Therefore if we use Ts = Tc / 4 we
     #just need to repeat each symbol two times. This can be easily done with the function np.repeat()
 
@@ -349,43 +351,45 @@ def sampling(signal, Fs, symbol_duration):
     #creation of the sampled signal
     repetitions = symbol_duration / Ts
     sampled_signal = np.repeat(signal, repetitions)
-    print("Before sampling:", signal[0:9])
-    print("After sampling", sampled_signal[0:18])
-    print("Length after sampling:", len(sampled_signal))
 
     #creation of the time vector
-    t_sampled = np.arange(0, final_length * Ts, Ts)   #1309440 values spaced apart by Tc / 4 seconds each
-    print("\nTime vector:", t_sampled)
-    print("Time vector length:", len(t_sampled))
+    begin = index*final_length
+    t_sampled = total_time_vector[begin:begin+final_length]   #1309440 values spaced apart by Tc / 4 seconds each
+    
+    if (flag==True):
+        print("Before sampling:", signal[0:9])
+        print("After sampling", sampled_signal[0:18])
+        print("Length after sampling:", len(sampled_signal))
+        print("\nTime vector:", t_sampled)
+        print("Time vector length:", len(t_sampled))
 
     return (sampled_signal, t_sampled)
 
 
-#COMPUTATION OF THE POWER OF THE SIGNAL
-#The power of the signal after the modulation is unitary, because each sample is either 1 or -1
 #This function increases the amplitude of a given signal multiplying it by the square root of the power to set
-def hpa(signal, time_vector, power_to_set):
+#If flag = True, the signal is plotted. Index is the number of the packet
+def hpa(signal, time_vector, power_to_set, index, flag):
     power = np.sum(signal**2)/len(signal)
-    print("Power before amplification: ", power)
     
     #to set a different power P we just need to multiply the signal by the sqrt(P)
     amplified_signal = np.sqrt(power_to_set)*signal
     new_power = np.mean(amplified_signal**2)   #equivalent way to compute the power of a signal
-    print("Power after amplification: ", new_power)
     
     #plot of the signal (first N samples)
-    N = 20
-    xticks = time_vector[0:N-1]
-    yticks = [-np.sqrt(power_to_set), 0, np.sqrt(power_to_set)]
-    fig = plt.figure(figsize=(15,5))
-    ax = fig.add_subplot(1,1,1)
-    ax.step(time_vector[0:N], amplified_signal[0:N], where='post', lw=3)
-    ax.set_xticks(xticks)
-    ax.set_yticks(yticks)
-    ax.set_title('Amplified signal', fontsize=15)
-    ax.set_xlabel('Time [s]', fontsize=15)
-    ax.set_ylabel('Amplitude', fontsize=15)
-    ax.grid()
+    if(flag==True):
+        N = 20
+        xticks = time_vector[0:N-1]
+        yticks = [-np.sqrt(power_to_set), 0, np.sqrt(power_to_set)]
+        fig = plt.figure(figsize=(15,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.step(time_vector[0:N], amplified_signal[0:N], where='post', lw=3)
+        ax.set_xticks(xticks)
+        ax.set_yticks(yticks)
+        title = "Amplified signal of packet " + str(index) + " at the transmitter"
+        ax.set_title(title, fontsize=15)
+        ax.set_xlabel('Time [s]', fontsize=15)
+        ax.set_ylabel('Amplitude', fontsize=15)
+        ax.grid()
     
     return amplified_signal
 
@@ -521,9 +525,19 @@ def quantizationBounds(array,nbits,lower_bound=None,upper_bound=None):
     q_array = q_array.astype(np.uint16)
     return q_array
 
-def quantizationFloat(array):
-    array16=array.astype(np.float16)
-    return array16
+def quantizationFloat(array, nbits):
+    if(nbits==16):
+        q_array=array.astype(np.float16)
+    elif(nbits==32):
+        q_array=array.astype(np.float32)
+    elif(nbits==64):
+        q_array=array.astype(np.float64)
+    elif(nbits==128):
+        q_array=array.astype(np.float128)
+    else:
+        raise ValueError('nbits must be 16, 32, 64 or 128')
+            
+    return q_array
 
 #Function to write I and Q samples already quantized into uint16 into a binary file.
 def writeFileBin(filename, I_samples, Q_samples):
