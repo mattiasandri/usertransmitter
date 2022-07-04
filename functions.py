@@ -422,9 +422,39 @@ def awgn(s, noise_power_dB, flag):
         s = s + noise
     return s
 
-#This function does the uniform quantization with n bits of an array, dividing the interval between lower_bound and upper_bound
-#in 2^(n_bits) values, equally spaced. Therefore, each value inside the array will be approximated by the closest value of the 
-#interval
+#This function performs the quantization. First normalizing the values between 0
+#and 2^nbits, and after that performing quantization of the values.
+#IMPORTANT: if the array contains values smaller than lower_bound (higher than upper_bound)
+#they will be "clipped" to the lower_bound (upper_bound).
+#If bounds are not passed as argouments, they are choosen finding the max/min
+#value of the array
+def quantization(array,nbits,lower_bound=None,upper_bound=None):
+    if(upper_bound==None): upper_bound=np.max(array)
+    if(lower_bound==None): lower_bound=np.min(array)
+    q_array=np.clip(array,lower_bound,upper_bound)
+    q_array = q_array-lower_bound
+    array_norm=np.linalg.norm(q_array)
+    q_array=(q_array/array_norm)*(2**nbits)
+    q_array = q_array.astype(np.uint16)
+    return q_array
+
+#Function to write I and Q samples into a binary file.
+#Open the file as write and binary: "wb"
+def writeFileBin(file, I_samples, Q_samples):
+    for j in range(len(I_samples)):
+        file.write((int(I_samples[j])).to_bytes(2, byteorder='big', signed=False))
+        file.write((int(Q_samples[j])).to_bytes(2, byteorder='big', signed=False))
+
+#Function to write I and Q samples into a text file as strings,
+#separated with a space.
+#Open the file as write: "w"
+def writeFileChar(file, I_samples, Q_samples):
+    for j in range(len(I_samples)):
+        file.write(format(I_samples[j], 'b').zfill(16))
+        file.write(' ')
+        file.write(format(Q_samples[j], 'b').zfill(16))
+        file.write(' ')
+"""
 def quantization(array, upper_bound, lower_bound, n_bits, flag):
     n_levels = 2**n_bits
     step = (upper_bound - lower_bound)/n_levels
@@ -446,7 +476,7 @@ def quantization(array, upper_bound, lower_bound, n_bits, flag):
         quantized[i] = values_set[index]
         
     return quantized
-
+"""
 #################################################
 # This last part contains functions to sum,     #
 # multiply and divide binary vectors.           #
