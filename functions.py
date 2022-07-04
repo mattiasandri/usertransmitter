@@ -444,7 +444,7 @@ def quantizationFloat(array):
 
 #Function to write I and Q samples already quantized into uint16 into a binary file.
 def writeFileBin(filename, I_samples, Q_samples):
-    file=open('signal.bin', 'wb')
+    file=open(filename, 'wb')
     for j in range(len(I_samples)):
         file.write((int(I_samples[j])).to_bytes(2, byteorder='big', signed=False))
         file.write((int(Q_samples[j])).to_bytes(2, byteorder='big', signed=False))
@@ -452,7 +452,7 @@ def writeFileBin(filename, I_samples, Q_samples):
 
 #Function to write float16 I Q samples into a file
 def writeFileFloat(filename, I_samples, Q_samples):
-    file=open('signalFloat.bin', 'wb')
+    file=open(filename, 'wb')
     for j in range(len(I_samples)):
         file.write(I_samples[j])
         file.write(Q_samples[j])
@@ -461,7 +461,7 @@ def writeFileFloat(filename, I_samples, Q_samples):
 #Function to write I and Q samples (given as uint16) into a text file as bit strings,
 #separated with a space.
 def writeFileChar(filename, I_samples, Q_samples):
-    file=open('signal.txt', 'w')
+    file=open(filename, 'w')
     for j in range(len(I_samples)):
         file.write(format(I_samples[j], 'b').zfill(16))
         file.write(' ')
