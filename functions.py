@@ -98,7 +98,7 @@ def stringToASCII7(message):
 
 #This function will create a message of ACK
 #Receives the syncPattern, SVID as str and msgID as int
-#Returns a bitarray
+#Returns a numpy array
 def createMessageACK(syncPattern, SVID, msgID):
     ACKpattern=(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
     msg=bitarray()
@@ -123,12 +123,13 @@ def createMessageACK(syncPattern, SVID, msgID):
     for i in range(len(msg)):
         arr_msg[i] = int(msg.pop())
     arr_msg=arr_msg.astype(np.uint8)
+    arr_msg=np.flip(arr_msg)
 
     return arr_msg
 
 #This function will create a message of NACK
 #Receives the syncPattern, SVID as str and msgID as int
-#Returns a bitarray
+#Returns a numpy array
 def createMessageNACK(syncPattern, SVID, msgID):
     ACKpattern=(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
     msg=bitarray()
@@ -153,6 +154,7 @@ def createMessageNACK(syncPattern, SVID, msgID):
     for i in range(len(msg)):
         arr_msg[i] = msg.pop()
     arr_msg=arr_msg.astype(np.uint8)
+    arr_msg=np.flip(arr_msg)
 
     return arr_msg
 
