@@ -102,7 +102,15 @@ def createMessageACK(syncPattern, SVID, msgID):
     appendOnBA(msg,CRC)
     appendOnBA(msg,'000000')
 
-    return msg
+    arr_msg = np.zeros(len(msg))
+
+    for i in range(len(msg)):
+        arr_msg[i] = int(msg.pop())
+    arr_msg=arr_msg.astype(np.int8)
+    arr_msg=np.flip(arr_msg)
+
+    return arr_msg
+
 
 #This function will create a message of NACK
 #Receives the syncPattern, SVID as str and msgID as int
@@ -126,7 +134,14 @@ def createMessageNACK(syncPattern, SVID, msgID):
     appendOnBA(msg,CRC)
     appendOnBA(msg,'000000')
 
-    return msg
+    arr_msg = np.zeros(len(msg))
+
+    for i in range(len(msg)):
+        arr_msg[i] = msg.pop()
+    arr_msg=arr_msg.astype(np.int8)
+    arr_msg=np.flip(arr_msg)
+
+    return arr_msg
 
 # simple conversion from hexadecimal to binary
 def hex2bin(h):
@@ -156,7 +171,7 @@ def plot_prn_zeros(N, prn, Rc):
     
     fig = plt.figure(figsize=(15,5))
     ax = fig.add_subplot(1,1,1)
-    ax.step(t, prn[0:N], where='post', color='red', lw=3)
+    ax.step(t, prn[0:N], where='post', color='blue', lw=3)
     ax.set_xticks(t)
     ax.set_yticks(yticks)
     title = "Prn to plot: " + str(prn[0:N])
@@ -180,7 +195,7 @@ def plot_prn_modified(N, prn, Rc):
     
     fig = plt.figure(figsize=(15,5))
     ax = fig.add_subplot(1,1,1)
-    ax.step(t, prn[0:N], where='post', color='red', lw=3)
+    ax.step(t, prn[0:N], where='post', color='blue', lw=3)
     ax.set_xticks(t)
     ax.set_yticks(yticks)
     title = "Prn to plot: " + str(prn[0:N])
@@ -197,18 +212,20 @@ def plot_prn_modified(N, prn, Rc):
 #Output: the modulated signal
 def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can also be created inside the function but less efficient
     m = message #we use the variable m to avoid any modification of the original message
-    
+    print("beginning m: ", m)
     #useful parameters
     Tb = 1 / Rb
     Tc = 1 / Rc
     
     #first we convert the data message from bits to symbols
     for i in range(len(m)):
-        if message[i] == 0:
+        if m[i] == 0:
             m[i] = 1
-        elif message[i] == 1:
+        elif m[i] == 1:
             m[i] = -1
     
+    print("After conversion m: ", m)
+
     #we select the correct prn (based on the SV we have to communicate to)
     prn = array[SV_index-1]
     
@@ -242,7 +259,7 @@ def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can a
         
         #we plot the first sample of the data message (constant for the 10 represented chips)
         ax1 = fig.add_subplot(3,1,1)
-        message_to_plot = np.tile(message[0], 10)
+        message_to_plot = np.tile(m[0], 10)
         ax1.step(t, message_to_plot, where='post', lw=4)
         ax1.set_xticks(xticks)
         ax1.set_yticks([-1,0,1])
@@ -317,6 +334,8 @@ def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can a
         ax3.set_ylabel("Modulated", fontsize=15)
         ax3.grid()        
         plt.show()
+        
+        print("m: ", m)
     return modulated
 
 
