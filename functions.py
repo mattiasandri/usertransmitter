@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import math
 from math import pi
-from scipy.signal import upfirdn
 import json
 import csv
 from bitarray import bitarray
@@ -106,10 +105,11 @@ def createMessageACK(syncPattern, SVID, msgID):
 
     for i in range(len(msg)):
         arr_msg[i] = int(msg.pop())
-    arr_msg=arr_msg.astype(np.int8)
     arr_msg=np.flip(arr_msg)
+    arr_msg=arr_msg.astype(np.int8)
 
     return arr_msg
+
 
 
 #This function will create a message of NACK
@@ -135,11 +135,11 @@ def createMessageNACK(syncPattern, SVID, msgID):
     appendOnBA(msg,'000000')
 
     arr_msg = np.zeros(len(msg))
-
+    
     for i in range(len(msg)):
         arr_msg[i] = msg.pop()
-    arr_msg=arr_msg.astype(np.int8)
     arr_msg=np.flip(arr_msg)
+    arr_msg=arr_msg.astype(np.int8)
 
     return arr_msg
 
@@ -171,7 +171,7 @@ def plot_prn_zeros(N, prn, Rc):
     
     fig = plt.figure(figsize=(15,5))
     ax = fig.add_subplot(1,1,1)
-    ax.step(t, prn[0:N], where='post', color='blue', lw=3)
+    ax.step(t, prn[0:N], where='post', lw=3)
     ax.set_xticks(t)
     ax.set_yticks(yticks)
     title = "Prn to plot: " + str(prn[0:N])
@@ -195,7 +195,7 @@ def plot_prn_modified(N, prn, Rc):
     
     fig = plt.figure(figsize=(15,5))
     ax = fig.add_subplot(1,1,1)
-    ax.step(t, prn[0:N], where='post', color='blue', lw=3)
+    ax.step(t, prn[0:N], where='post', lw=3)
     ax.set_xticks(t)
     ax.set_yticks(yticks)
     title = "Prn to plot: " + str(prn[0:N])
@@ -211,8 +211,8 @@ def plot_prn_modified(N, prn, Rc):
 #       stores the prns, to visualize it or not
 #Output: the modulated signal
 def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can also be created inside the function but less efficient
-    m = message #we use the variable m to avoid any modification of the original message
-    print("beginning m: ", m)
+    m = np.copy(message) #we use the variable m to avoid any modification of the original message
+    
     #useful parameters
     Tb = 1 / Rb
     Tc = 1 / Rc
@@ -224,7 +224,6 @@ def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can a
         elif m[i] == 1:
             m[i] = -1
     
-    print("After conversion m: ", m)
 
     #we select the correct prn (based on the SV we have to communicate to)
     prn = array[SV_index-1]
@@ -335,21 +334,21 @@ def boc(message, subcarrier, Rb, Rc, SV_index, array, flag):   #subcarrier can a
         ax3.grid()        
         plt.show()
         
-        print("m: ", m)
     return modulated
 
 
 #function that samples a signal with a certain sampling frequency Fs
-def sampling(signal, Fs):
+def sampling(signal, Fs, symbol_duration):
     #As already said, each symbol of the modulated signal has a duration of Tc / 2. Therefore if we use Ts = Tc / 4 we
     #just need to repeat each symbol two times. This can be easily done with the function np.repeat()
 
-    Ts = 1 / Fs      #sampling period, equal to Tc/4
+    Ts = 1 / Fs      #sampling period, equal to Tc/4 (in general it should be Tc/2, Tc/4, Tc/6 and so on)
 
     final_length = 1309440
 
     #creation of the sampled signal
-    sampled_signal = np.repeat(signal, 2)
+    repetitions = symbol_duration / Ts
+    sampled_signal = np.repeat(signal, repetitions)
     print("Before sampling:", signal[0:9])
     print("After sampling", sampled_signal[0:18])
     print("Length after sampling:", len(sampled_signal))
@@ -398,18 +397,113 @@ def lin2dB(x):
 def dB2lin(x):
     return 10**(x/10)
 
-#This function simulates the additive white gaussian noise channel. It takes as input the signal without the noise,
+
+#parameters: original Doppler samples, original sampling period, starting point in seconds of the interpolated samples
+# to be returned, number of interpolated samples needed, interpolated sampling period
+#returns: interpolated doppler shifts
+def GetDopplerShift(originalDopplerSamples, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod):
+
+    SampleTime = (np.asarray(range(0,len(originalDopplerSamples))))*originalSamplingPeriod #create the x vector (original)
+    InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
+    InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
+
+    popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3, 0.00001], full_output=False)
+
+    return cosf(InterpSampleTime, popt[0], popt[1])
+
+def linf(x, a, b):
+    return np.asarray((a*x)+b)
+
+#parameters: original FSPL samples, original sampling period, starting point in seconds of the interpolated samples
+# to be returned, number of interpolated samples needed, interpolated sampling period
+#returns: interpolated FSPL
+def GetFSPL(originalFSPL, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod):
+
+    SampleTime = (np.asarray(range(0,len(originalFSPL))))*originalSamplingPeriod #create the x vector (original)
+    InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
+    InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
+
+    popt, pcov = optimize.curve_fit(linf, SampleTime, originalFSPL, p0=[-0.5, 5.60238e+09], full_output=False)
+
+    return linf(InterpSampleTime, popt[0], popt[1])
+
+
+#Function that returns the amplitude of the received signal, corresponding to a packet number 'index'.
+#Takes as input the array of the FSPL  (after the interpolation, with a number of samples equal to the
+#number of packets times 1309440), the index (number of the packet) and all the fixed parameters for the link budget
+def return_amplitude(array, index, Pt, Gt, Gr):
+    FSPL = array[index*1309440]  
+    Pr_dB = lin2dB(Pt) + Gt + Gr - FSPL
+    Pr = dB2lin(Pr_dB)
+    return np.sqrt(Pr)
+
+
+#function that returns the time_vector of the packet number "index" (first packet has index 0)
+def return_time_vector(total_time_vector, index):
+    begin = 1309440*index
+    time = total_time_vector[begin:begin+1309440]
+    return time
+
+
+#function that returns the doppler shifts for the packet number "index". It takes in input the complete array
+#of Doppler frequencies for the all packets
+def return_dopplers(array, index):
+    begin = 1309440*index
+    return array[begin:begin+1309440]
+
+
+#This function simulates the additive white gaussian noise. It takes as input the signal without the noise,
 #the power of the noise in dB and a flag that allows the generation of the noise only if it is true.
 def awgn(s, noise_power_dB, flag):
     length = len(s)
     if flag == True:
-        noise = 10 ** (noise_power_dB/20) * np.random.randn(length)  
-        #this returns gaussian samples drawn from the standard normal distribution, so with zero mean and unitary
-        #variance. The zero mean is okay, but the variance of the noise should be equal to its power, so we need
+        noise = (10 ** (noise_power_dB/20)) * np.random.randn(length)  
+        #np.random.randn(length) returns gaussian samples drawn from the standard normal distribution, so with zero mean and             #unitary variance. The zero mean is okay, but the variance of the noise should be equal to its power, so we need
         #to multiply by the standard deviation of the noise (that is the sqrt of the power, so the sqrt of
         #(10**noise_power_dB/10). That is why we put the multiplication factor there.
         s = s + noise
     return s
+
+
+#function that returns the time_vector at the receiver of the packet number "index" (first packet has index 0)
+def return_time_vector(total_time_vector, index):
+    begin = 1309440*index
+    time = total_time_vector[begin:begin+1309440]
+    return time
+
+
+#function that computes the I/Q samples of a signal, given the doppler frequencies and the time vecotr of the signal
+#If flag is true, it plots them
+def IQ_samples(signal, time, dopplers, flag):
+    I = signal*np.cos(2*pi*dopplers*time)
+    Q = signal*np.sin(2*pi*dopplers*time)
+    
+    if (flag==True):
+        N = 20
+        fig = plt.figure(figsize=(15,5))
+        ax = fig.add_subplot(1,1,1)
+        xticks = time[0:N]
+        ax.stem(time[0:N], I[0:N])
+        ax.set_xticks(xticks)
+        plt.xticks(rotation=45)
+        ax.set_title("I samples before noise addition", fontsize=15)
+        ax.set_xlabel("Time [s]", fontsize=15)
+        ax.set_ylabel("I samples", fontsize=15)
+        ax.grid()
+        
+        fig = plt.figure(figsize=(15,5))
+        ax = fig.add_subplot(1,1,1)
+        xticks = time[0:N]
+        ax.stem(time[0:N], Q[0:N])
+        ax.set_xticks(xticks)
+        plt.xticks(rotation=45)
+        ax.set_title("Q samples before noise addition", fontsize=15)
+        ax.set_xlabel("Time [s]", fontsize=15)
+        ax.set_ylabel("Q samples", fontsize=15)
+        ax.grid()
+        
+    return (I, Q)
+
 
 #This function does the uniform quantization with n bits of an array, dividing the interval between lower_bound and upper_bound
 #in 2^(n_bits) values, equally spaced. Therefore, each value inside the array will be approximated by the closest value of the 
