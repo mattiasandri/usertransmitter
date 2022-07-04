@@ -57,7 +57,7 @@ def GetDopplerShift(originalDopplerSamples, originalSamplingPeriod, startingTime
     InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
     InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
 
-    popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3, 0.00001], full_output=False)
+    popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3.45376, 0.001], full_output=False)
 
     return cosf(InterpSampleTime, popt[0], popt[1])
 
@@ -428,7 +428,7 @@ def awgn(s, noise_power_dB, flag):
 #they will be "clipped" to the lower_bound (upper_bound).
 #If bounds are not passed as argouments, they are choosen finding the max/min
 #value of the array
-def quantization(array,nbits,lower_bound=None,upper_bound=None):
+def quantizationBounds(array,nbits,lower_bound=None,upper_bound=None):
     if(upper_bound==None): upper_bound=np.max(array)
     if(lower_bound==None): lower_bound=np.min(array)
     q_array=np.clip(array,lower_bound,upper_bound)
@@ -438,22 +438,36 @@ def quantization(array,nbits,lower_bound=None,upper_bound=None):
     q_array = q_array.astype(np.uint16)
     return q_array
 
-#Function to write I and Q samples into a binary file.
-#Open the file as write and binary: "wb"
-def writeFileBin(file, I_samples, Q_samples):
+def quantizationFloat(array):
+    array16=array.astype(np.float16)
+    return array16
+
+#Function to write I and Q samples already quantized into uint16 into a binary file.
+def writeFileBin(filename, I_samples, Q_samples):
+    file=open('signal.bin', 'wb')
     for j in range(len(I_samples)):
         file.write((int(I_samples[j])).to_bytes(2, byteorder='big', signed=False))
         file.write((int(Q_samples[j])).to_bytes(2, byteorder='big', signed=False))
+    file.close()
 
-#Function to write I and Q samples into a text file as strings,
+#Function to write float16 I Q samples into a file
+def writeFileFloat(filename, I_samples, Q_samples):
+    file=open('signalFloat.bin', 'wb')
+    for j in range(len(I_samples)):
+        file.write(I_samples[j])
+        file.write(Q_samples[j])
+    file.close()
+
+#Function to write I and Q samples (given as uint16) into a text file as bit strings,
 #separated with a space.
-#Open the file as write: "w"
-def writeFileChar(file, I_samples, Q_samples):
+def writeFileChar(filename, I_samples, Q_samples):
+    file=open('signal.txt', 'w')
     for j in range(len(I_samples)):
         file.write(format(I_samples[j], 'b').zfill(16))
         file.write(' ')
         file.write(format(Q_samples[j], 'b').zfill(16))
         file.write(' ')
+    file.close()
 """
 def quantization(array, upper_bound, lower_bound, n_bits, flag):
     n_levels = 2**n_bits
