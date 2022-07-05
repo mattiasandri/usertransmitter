@@ -320,7 +320,7 @@ def boc(message, subcarrier, Rb, Rc, array, SV_index, prn_x_symbol, flag):
     #by the subcarrier
     
     modulated = np.zeros(len(subcarrier))
-
+    
     c = 0
     for i in range(len(spreaded)):
         for j in range(2):
