@@ -496,15 +496,22 @@ def dB2lin(x):
 #to be returned, number of interpolated samples needed, interpolated sampling period
 #returns: interpolated FSPL
 
-def GetFSPL(originalFSPL, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod):
+def GetFSPL(originalFSPL, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod, plotFlag=False):
 
     SampleTime = (np.asarray(range(0,len(originalFSPL))))*originalSamplingPeriod #create the x vector (original)
     InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
     InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
 
     popt, pcov = optimize.curve_fit(linf, SampleTime, originalFSPL, p0=[-0.5, 5.60238e+09], full_output=False)
+    interpFSPL = linf(InterpSampleTime, popt[0], popt[1])
 
-    return linf(InterpSampleTime, popt[0], popt[1])
+    if(plotFlag):
+        plt.figure(figsize=(10, 6))
+        plt.plot(SampleTime,originalFSPL,label="Original FSPL",linewidth=6)
+        plt.plot(InterpSampleTime,interpFSPL,label="Interpolated FSPL",linewidth=8)
+        plt.legend(loc="upper right")
+
+    return  interpFSPL
 
 
 
@@ -541,15 +548,22 @@ def return_time_vector(total_time_vector, index, final_length):
 #to be returned, number of interpolated samples needed, interpolated sampling period
 #Returns: interpolated doppler shifts
 
-def GetDopplerShift(originalDopplerSamples, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod):
+def GetDopplerShift(originalDopplerSamples, originalSamplingPeriod, startingTime, numInterpSamples, interpSamplingPeriod, plotFlag=False):
 
     SampleTime = (np.asarray(range(0,len(originalDopplerSamples))))*originalSamplingPeriod #create the x vector (original)
     InterpSampleTime = (np.asarray(range(0,numInterpSamples)))*interpSamplingPeriod #create the x vector (interpolated)
     InterpSampleTime = np.asarray([i+startingTime for i in InterpSampleTime]) #shifts it 
 
-    popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3, 0.00001], full_output=False)
+    popt, pcov = optimize.curve_fit(cosf, SampleTime, originalDopplerSamples, p0=[3.45376, 0.001], full_output=False)
+    interpDopplerSamples = cosf(InterpSampleTime, popt[0], popt[1])
 
-    return cosf(InterpSampleTime, popt[0], popt[1])
+    if(plotFlag):
+        plt.figure(figsize=(10, 6))
+        plt.plot(SampleTime,originalDopplerSamples,label="Original Doppler Shift",linewidth=6)
+        plt.plot(InterpSampleTime,interpDopplerSamples,label="Interpolated Doppler Shift",linewidth=8)
+        plt.legend(loc="upper right")
+
+    return interpDopplerSamples
 
 
 
@@ -646,6 +660,32 @@ def writeFileFloat(filename, I_samples, Q_samples):
     file.close()
     
 
+    
+#This function will read nsamples from a .bin file containing the signal, with samples in the
+#floating point notation of length nbits, and return the I_samples and Q_samples vector
+
+def readQuantizedFloat(filename,nbits,nsamples):
+    if(nbits==16):
+        message=np.fromfile(filename,  dtype=np.float16)
+    elif(nbits==32):
+        message=np.fromfile(filename,  dtype=np.float32)
+    elif(nbits==64):
+        message=np.fromfile(filename,  dtype=np.float64)
+    elif(nbits==128):
+        message=np.fromfile(filename,  dtype=np.float128)
+    else:
+        raise ValueError('nbits must be 16, 32, 64 or 128')
+    
+    I_samples = np.array(message[0],ndmin=1)
+    Q_samples = np.array(message[1],ndmin=1)
+
+    for i in range(2, nsamples):
+        if i % 2: Q_samples=np.append(Q_samples,message[i])
+        else : I_samples=np.append(I_samples,message[i])
+    
+    return I_samples,Q_samples
+    
+    
     
 #This function performs an alternative quantization. First normalizing the values between 0
 #and 2^nbits, and after that performing quantization of the values.
