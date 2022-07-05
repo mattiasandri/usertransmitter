@@ -438,6 +438,7 @@ def quantizationBounds(array,nbits,lower_bound=None,upper_bound=None):
     q_array = q_array.astype(np.uint16)
     return q_array
 
+#This function perform quantization using a nbits floating number notation
 def quantizationFloat(array, nbits):
     if(nbits==16):
         q_array=array.astype(np.float16)
@@ -451,6 +452,32 @@ def quantizationFloat(array, nbits):
         raise ValueError('nbits must be 16, 32, 64 or 128')
             
     return q_array
+
+#This function will read nsamples from a .bin file containing the signal, with samples in the
+#floating point notation of length nbits, and plot a histogram of them
+def dequantizeAndPlotFloat(filename,nbits,nsamples):
+    if(nbits==16):
+        message=np.fromfile(filename,  dtype=np.float16)
+    elif(nbits==32):
+        message=np.fromfile(filename,  dtype=np.float32)
+    elif(nbits==64):
+        message=np.fromfile(filename,  dtype=np.float64)
+    elif(nbits==128):
+        message=np.fromfile(filename,  dtype=np.float128)
+    else:
+        raise ValueError('nbits must be 16, 32, 64 or 128')
+    
+    I_samples = np.array(message[0],ndmin=1)
+    Q_samples = np.array(message[1],ndmin=1)
+
+    for i in range(2, nsamples):
+        if i % 2: I_samples=np.append(I_samples,message[i])
+        else : Q_samples=np.append(Q_samples,message[i])
+    
+    plt.hist(I_samples,bins=50,label="Q Samples")
+    plt.hist(Q_samples,bins=50,label="I Samples")
+    plt.legend(loc="upper left")
+
 
 #Function to write I and Q samples already quantized into uint16 into a binary file.
 def writeFileBin(filename, I_samples, Q_samples):
